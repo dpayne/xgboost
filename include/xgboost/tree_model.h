@@ -717,7 +717,12 @@ inline bst_float RegTree::FVec::GetFvalue(size_t i) const {
   return data_[i].fvalue;
 }
 
+#include <iostream>
 inline bool RegTree::FVec::IsMissing(size_t i) const {
+  if (i < 0 || i >= data_.size()) {
+      std::cerr << "xxx: out of bounds data read " << i " max size " << data_.size() << std::endl;
+      throw std::exception( "out of bounds read" );
+  }
   return data_[i].flag == -1;
 }
 
