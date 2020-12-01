@@ -328,8 +328,12 @@ class CPUPredictor : public Predictor {
                        std::vector<bst_float>* out_preds,
                        const gbm::GBTreeModel& model, unsigned ntree_limit) override {
     if (thread_temp_.size() == 0) {
-      thread_temp_.resize(1, RegTree::FVec());
-      thread_temp_[0].Init(model.learner_model_param->num_feature);
+      std::lock_guard<std::mutex> guard(lock_);
+      // recheck size inside the guard
+      if (thread_temp_.size() == 0) {
+        thread_temp_.resize(1, RegTree::FVec());
+        thread_temp_[0].Init(model.learner_model_param->num_feature);
+      }
     }
     ntree_limit *= model.learner_model_param->num_output_group;
     if (ntree_limit == 0 || ntree_limit > model.trees.size()) {
