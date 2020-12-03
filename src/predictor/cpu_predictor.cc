@@ -183,15 +183,10 @@ class CPUPredictor : public Predictor {
 
   void PredictDMatrix(DMatrix *p_fmat, std::vector<bst_float> *out_preds,
                       gbm::GBTreeModel const &model, int32_t tree_begin,
-                      int32_t tree_end) {
-    if (!is_initialized_.load()) {
-      std::lock_guard<std::mutex> guard(lock_);
-      const int threads = omp_get_max_threads();
-      InitThreadTemp(threads * kBlockOfRowsSize,
-                     model.learner_model_param->num_feature,
-                     &this->thread_temp_);
-      is_initialized_ = true;
-    }
+                      int32_t tree_end, std::vector<RegTree::FVec> * thread_temp) {
+    const int threads = omp_get_max_threads();
+    InitThreadTemp(threads * kBlockOfRowsSize,
+                   model.learner_model_param->num_feature, thread_temp);
     for (auto const& batch : p_fmat->GetBatches<SparsePage>()) {
       CHECK_EQ(out_preds->size(),
                p_fmat->Info().num_row_ * model.learner_model_param->num_output_group);
@@ -199,7 +194,7 @@ class CPUPredictor : public Predictor {
       PredictBatchByBlockOfRowsKernel<SparsePageView<kUnroll>,
                           kBlockOfRowsSize>(SparsePageView<kUnroll>{&batch},
                                               out_preds, model, tree_begin,
-                                              tree_end, &thread_temp_);
+                                              tree_end, thread_temp);
     }
   }
 
@@ -242,6 +237,7 @@ class CPUPredictor : public Predictor {
   // multi-output and forest.  Same problem exists for tree_begin
   void PredictBatch(DMatrix* dmat, PredictionCacheEntry* predts,
                     const gbm::GBTreeModel& model, int tree_begin,
+                    std::vector<RegTree::FVec> * thread_temp,
                     uint32_t const ntree_limit = 0) override {
     // tree_begin is not used, right now we just enforce it to be 0.
     CHECK_EQ(tree_begin, 0);
@@ -278,7 +274,8 @@ class CPUPredictor : public Predictor {
     if (beg_version < end_version) {
       this->PredictDMatrix(dmat, &out_preds->HostVector(), model,
                            beg_version * output_groups,
-                           end_version * output_groups);
+                           end_version * output_groups,
+                           thread_temp);
     }
 
     // delta means {size of forest} * {number of newly accumulated layers}
@@ -505,7 +502,6 @@ class CPUPredictor : public Predictor {
 
  private:
   std::mutex lock_;
-  std::atomic<bool> is_initialized_{false};
   std::vector<RegTree::FVec> thread_temp_;
   static size_t constexpr kBlockOfRowsSize = 64;
 };
