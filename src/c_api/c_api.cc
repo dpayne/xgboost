@@ -504,7 +504,8 @@ XGB_DLL int XGBoosterPredict(BoosterHandle handle,
                              unsigned ntree_limit,
                              int training,
                              xgboost::bst_ulong *len,
-                             const bst_float **out_result) {
+                             const bst_float **out_result,
+                             std::vector<RegTree::FVec> * thread_temp) {
   API_BEGIN();
   CHECK_HANDLE();
   auto *learner = static_cast<Learner*>(handle);
@@ -517,7 +518,8 @@ XGB_DLL int XGBoosterPredict(BoosterHandle handle,
       (option_mask & 2) != 0,
       (option_mask & 4) != 0,
       (option_mask & 8) != 0,
-      (option_mask & 16) != 0);
+      (option_mask & 16) != 0,
+      thread_temp);
   *out_result = dmlc::BeginPtr(entry.predictions.ConstHostVector());
   *len = static_cast<xgboost::bst_ulong>(entry.predictions.Size());
   API_END();

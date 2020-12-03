@@ -23,6 +23,8 @@
 #define XGB_DLL XGB_EXTERN_C __attribute__ ((visibility ("default")))
 #endif  // defined(_MSC_VER) || defined(_WIN32)
 
+#include <xgboost/tree_model.h>
+
 // manually define unsigned long
 typedef uint64_t bst_ulong;  // NOLINT(*)
 
@@ -686,7 +688,8 @@ XGB_DLL int XGBoosterPredict(BoosterHandle handle,
                              unsigned ntree_limit,
                              int training,
                              bst_ulong *out_len,
-                             const float **out_result);
+                             const float **out_result,
+                             std::vector<xgboost::RegTree::FVec> * thread_temp = nullptr);
 
 /*
  * ========================== Begin Serialization APIs =========================

@@ -128,7 +128,8 @@ class GBLinear : public GradientBooster {
 
   void PredictBatch(DMatrix *p_fmat,
                     PredictionCacheEntry *predts,
-                    bool, unsigned ntree_limit) override {
+                    bool, unsigned ntree_limit,
+                    std::vector<RegTree::FVec> * thread_temp) override {
     monitor_.Start("PredictBatch");
     auto* out_preds = &predts->predictions;
     CHECK_EQ(ntree_limit, 0U)

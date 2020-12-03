@@ -9,6 +9,7 @@
 #include <xgboost/data.h>
 #include <xgboost/generic_parameters.h>
 #include <xgboost/host_device_vector.h>
+#include <xgboost/tree_model.h>
 
 #include <functional>
 #include <memory>
@@ -132,7 +133,8 @@ class Predictor {
    */
   virtual void PredictBatch(DMatrix* dmat, PredictionCacheEntry* out_preds,
                             const gbm::GBTreeModel& model, int tree_begin,
-                            uint32_t const ntree_limit = 0) = 0;
+                            uint32_t const ntree_limit = 0,
+                            std::vector<xgboost::RegTree::FVec> * thread_temp = nullptr) = 0;
 
   /**
    * \brief Inplace prediction.

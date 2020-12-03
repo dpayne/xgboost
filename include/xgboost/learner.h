@@ -15,6 +15,7 @@
 #include <xgboost/generic_parameters.h>
 #include <xgboost/host_device_vector.h>
 #include <xgboost/model.h>
+#include <xgboost/tree_model.h>
 
 #include <utility>
 #include <map>
@@ -118,7 +119,8 @@ class Learner : public Model, public Configurable, public dmlc::Serializable {
                        bool pred_leaf = false,
                        bool pred_contribs = false,
                        bool approx_contribs = false,
-                       bool pred_interactions = false) = 0;
+                       bool pred_interactions = false,
+                       std::vector<RegTree::FVec> * thread_temp = nullptr) = 0;
 
   /*!
    * \brief Inplace prediction.

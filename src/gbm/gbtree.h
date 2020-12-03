@@ -256,7 +256,8 @@ class GBTree : public GradientBooster {
   void PredictBatch(DMatrix* p_fmat,
                     PredictionCacheEntry* out_preds,
                     bool training,
-                    unsigned ntree_limit) override;
+                    unsigned ntree_limit,
+                    std::vector<RegTree::FVec> * thread_temp = nullptr) override;
 
   void InplacePredict(dmlc::any const &x, float missing,
                       PredictionCacheEntry *out_preds,

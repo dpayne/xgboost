@@ -1091,11 +1091,12 @@ class LearnerImpl : public LearnerIO {
   }
 
   void Predict(std::shared_ptr<DMatrix> data, bool output_margin,
-               HostDeviceVector<bst_float>* out_preds, unsigned ntree_limit,
+               HostDeviceVector<bst_float>* out_preds,
+               unsigned ntree_limit,
                bool training,
                bool pred_leaf, bool pred_contribs, bool approx_contribs,
                bool pred_interactions,
-               std::vector<RegTree::FVec> * thread_temp) override {
+               std::vector<RegTree::FVec> * thread_temp = nullptr) override {
     int multiple_predictions = static_cast<int>(pred_leaf) +
                                static_cast<int>(pred_interactions) +
                                static_cast<int>(pred_contribs);
@@ -1111,7 +1112,7 @@ class LearnerImpl : public LearnerIO {
     } else {
       auto local_cache = this->GetPredictionCache();
       auto& prediction = local_cache->Cache(data, generic_parameters_.gpu_id);
-      this->PredictRaw(data.get(), &prediction, training, thread_temp, ntree_limit);
+      this->PredictRaw(data.get(), &prediction, training, ntree_limit, thread_temp);
       // Copy the prediction cache to output prediction. out_preds comes from C API
       out_preds->SetDevice(generic_parameters_.gpu_id);
       out_preds->Resize(prediction.predictions.Size());
@@ -1157,11 +1158,11 @@ class LearnerImpl : public LearnerIO {
    */
   void PredictRaw(DMatrix* data, PredictionCacheEntry* out_preds,
                   bool training,
-                  std::vector<RegTree::FVec> * thread_temp,
-                  unsigned ntree_limit = 0) const {
+                  unsigned ntree_limit = 0,
+                  std::vector<RegTree::FVec> * thread_temp = nullptr) const {
     CHECK(gbm_ != nullptr) << "Predict must happen after Load or configuration";
     this->ValidateDMatrix(data, false);
-    gbm_->PredictBatch(data, out_preds, training, thread_temp, ntree_limit);
+    gbm_->PredictBatch(data, out_preds, training, ntree_limit, thread_temp);
   }
 
   void ValidateDMatrix(DMatrix* p_fmat, bool is_training) const {

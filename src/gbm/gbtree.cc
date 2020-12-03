@@ -433,7 +433,8 @@ void GBTree::Slice(int32_t layer_begin, int32_t layer_end, int32_t step,
 void GBTree::PredictBatch(DMatrix* p_fmat,
                           PredictionCacheEntry* out_preds,
                           bool,
-                          unsigned ntree_limit) {
+                          unsigned ntree_limit,
+                          std::vector<RegTree::FVec> * thread_temp) {
   CHECK(configured_);
   GetPredictor(&out_preds->predictions, p_fmat)
       ->PredictBatch(p_fmat, out_preds, model_, 0, ntree_limit);
@@ -598,7 +599,8 @@ class Dart : public GBTree {
   void PredictBatch(DMatrix* p_fmat,
                     PredictionCacheEntry* p_out_preds,
                     bool training,
-                    unsigned ntree_limit) override {
+                    unsigned ntree_limit,
+                    std::vector<RegTree::FVec> * thread_temp) override {
     DropTrees(training);
     int num_group = model_.learner_model_param->num_output_group;
     ntree_limit *= num_group;

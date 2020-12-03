@@ -14,6 +14,7 @@
 #include <xgboost/data.h>
 #include <xgboost/host_device_vector.h>
 #include <xgboost/model.h>
+#include <xgboost/tree_model.h>
 
 #include <vector>
 #include <utility>
@@ -104,7 +105,8 @@ class GradientBooster : public Model, public Configurable {
   virtual void PredictBatch(DMatrix* dmat,
                             PredictionCacheEntry* out_preds,
                             bool training,
-                            unsigned ntree_limit = 0) = 0;
+                            unsigned ntree_limit = 0,
+                            std::vector<RegTree::FVec> * thread_temp = nullptr) = 0;
 
   /*!
    * \brief Inplace prediction.

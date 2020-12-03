@@ -237,8 +237,11 @@ class CPUPredictor : public Predictor {
   // multi-output and forest.  Same problem exists for tree_begin
   void PredictBatch(DMatrix* dmat, PredictionCacheEntry* predts,
                     const gbm::GBTreeModel& model, int tree_begin,
-                    std::vector<RegTree::FVec> * thread_temp,
-                    uint32_t const ntree_limit = 0) override {
+                    uint32_t const ntree_limit = 0,
+                    std::vector<RegTree::FVec> * thread_temp = nullptr) override {
+    if (thread_temp == nullptr) {
+      thread_temp = &this->thread_temp_;
+    }
     // tree_begin is not used, right now we just enforce it to be 0.
     CHECK_EQ(tree_begin, 0);
     auto* out_preds = &predts->predictions;
