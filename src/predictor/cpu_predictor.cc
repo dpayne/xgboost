@@ -184,10 +184,14 @@ class CPUPredictor : public Predictor {
   void PredictDMatrix(DMatrix *p_fmat, std::vector<bst_float> *out_preds,
                       gbm::GBTreeModel const &model, int32_t tree_begin,
                       int32_t tree_end) {
-    std::lock_guard<std::mutex> guard(lock_);
-    const int threads = omp_get_max_threads();
-    InitThreadTemp(threads*kBlockOfRowsSize, model.learner_model_param->num_feature,
-                   &this->thread_temp_);
+    if (!is_initialized_.load()) {
+      std::lock_guard<std::mutex> guard(lock_);
+      const int threads = omp_get_max_threads();
+      InitThreadTemp(threads * kBlockOfRowsSize,
+                     model.learner_model_param->num_feature,
+                     &this->thread_temp_);
+      is_initialized_ = true;
+    }
     for (auto const& batch : p_fmat->GetBatches<SparsePage>()) {
       CHECK_EQ(out_preds->size(),
                p_fmat->Info().num_row_ * model.learner_model_param->num_output_group);
@@ -328,13 +332,10 @@ class CPUPredictor : public Predictor {
                        std::vector<bst_float>* out_preds,
                        const gbm::GBTreeModel& model, unsigned ntree_limit) override {
     if (thread_temp_.size() == 0) {
-      std::lock_guard<std::mutex> guard(lock_);
-      // recheck size inside the guard
-      if (thread_temp_.size() == 0) {
-        thread_temp_.resize(1, RegTree::FVec());
-        thread_temp_[0].Init(model.learner_model_param->num_feature);
-      }
+      thread_temp_.resize(1, RegTree::FVec());
+      thread_temp_[0].Init(model.learner_model_param->num_feature);
     }
+
     ntree_limit *= model.learner_model_param->num_output_group;
     if (ntree_limit == 0 || ntree_limit > model.trees.size()) {
       ntree_limit = static_cast<unsigned>(model.trees.size());
@@ -504,6 +505,7 @@ class CPUPredictor : public Predictor {
 
  private:
   std::mutex lock_;
+  std::atomic<bool> is_initialized_{false};
   std::vector<RegTree::FVec> thread_temp_;
   static size_t constexpr kBlockOfRowsSize = 64;
 };
