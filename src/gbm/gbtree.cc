@@ -437,7 +437,7 @@ void GBTree::PredictBatch(DMatrix* p_fmat,
                           std::vector<RegTree::FVec> * thread_temp) {
   CHECK(configured_);
   GetPredictor(&out_preds->predictions, p_fmat)
-      ->PredictBatch(p_fmat, out_preds, model_, 0, ntree_limit);
+      ->PredictBatch(p_fmat, out_preds, model_, 0, ntree_limit, thread_temp);
 }
 
 std::unique_ptr<Predictor> const &
@@ -601,6 +601,9 @@ class Dart : public GBTree {
                     bool training,
                     unsigned ntree_limit,
                     std::vector<RegTree::FVec> * thread_temp) override {
+    if (thread_temp == nullptr) {
+      thread_temp = &thread_temp_;
+    }
     DropTrees(training);
     int num_group = model_.learner_model_param->num_output_group;
     ntree_limit *= num_group;
@@ -619,8 +622,8 @@ class Dart : public GBTree {
                 model_.learner_model_param->base_score);
     }
     const int nthread = omp_get_max_threads();
-    InitThreadTemp(nthread);
-    PredLoopSpecalize(p_fmat, &out_preds, num_group, 0, ntree_limit);
+    InitThreadTemp(nthread, thread_temp);
+    PredLoopSpecalize(p_fmat, &out_preds, num_group, 0, ntree_limit, thread_temp);
   }
 
   void PredictInstance(const SparsePage::Inst &inst,
@@ -672,7 +675,8 @@ class Dart : public GBTree {
       std::vector<bst_float>* out_preds,
       int num_group,
       unsigned tree_begin,
-      unsigned tree_end) {
+      unsigned tree_end,
+      std::vector<RegTree::FVec> * thread_temp) {
     CHECK_EQ(num_group, model_.learner_model_param->num_output_group);
     std::vector<bst_float>& preds = *out_preds;
     CHECK_EQ(model_.param.size_leaf_vector, 0)
@@ -687,7 +691,7 @@ class Dart : public GBTree {
 #pragma omp parallel for schedule(static)
         for (bst_omp_uint i = 0; i < nsize - rest; i += kUnroll) {
           const int tid = omp_get_thread_num();
-          RegTree::FVec& feats = thread_temp_[tid];
+          RegTree::FVec& feats = (*thread_temp)[tid];
           int64_t ridx[kUnroll];
           SparsePage::Inst inst[kUnroll];
           for (int k = 0; k < kUnroll; ++k) {
@@ -707,7 +711,7 @@ class Dart : public GBTree {
       }
 
       for (bst_omp_uint i = nsize - rest; i < nsize; ++i) {
-        RegTree::FVec& feats = thread_temp_[0];
+        RegTree::FVec& feats = (*thread_temp)[0];
         const auto ridx = static_cast<int64_t>(batch.base_rowid + i);
         const SparsePage::Inst inst = batch[i];
         for (int gid = 0; gid < num_group; ++gid) {
@@ -837,12 +841,12 @@ class Dart : public GBTree {
   }
 
   // init thread buffers
-  inline void InitThreadTemp(int nthread) {
-    int prev_thread_temp_size = thread_temp_.size();
+  inline void InitThreadTemp(int nthread, std::vector<RegTree::FVec> * thread_temp) {
+    int prev_thread_temp_size = thread_temp->size();
     if (prev_thread_temp_size < nthread) {
       thread_temp_.resize(nthread, RegTree::FVec());
       for (int i = prev_thread_temp_size; i < nthread; ++i) {
-        thread_temp_[i].Init(model_.learner_model_param->num_feature);
+        (*thread_temp)[i].Init(model_.learner_model_param->num_feature);
       }
     }
   }
